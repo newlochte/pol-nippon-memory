@@ -12,7 +12,7 @@ LATIN_FONT_PATH = FONTS_DIR / "NotoSans-Regular.ttf"
 
 # CJK font: needed for Japanese kanji/kana glyphs, which the Latin font
 # does not contain. Drop a Japanese-capable .ttf/.otf/.ttc here.
-JAPANESE_FONT_PATH = FONTS_DIR / "NotoSansJP-Regular.ttf"
+JAPANESE_FONT_PATH = FONTS_DIR / "NotoSansJP[wght].ttf"
 
 # ----------------------------------------------------------------------
 # window / loop
