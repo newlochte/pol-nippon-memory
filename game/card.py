@@ -1,41 +1,50 @@
-from typing import Callable, Optional
+from typing import Callable, ClassVar, Optional
 
 import pygame
 
+from game.constants import (
+    CARD_BACK_COLOR,
+    CARD_FACE_COLOR,
+    CARD_FLIP_DURATION,
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    JAPANESE_FONT_PATH,
+    JAPANESE_FONT_SIZE,
+    LATIN_FONT_PATH,
+    LATIN_FONT_SIZE,
+)
+
 OnFlipComplete = Callable[["Card"], None]
+
+# (japanese, romaji, english, polish)
+WordTuple = tuple[str, str, str, str]
 
 
 class Card:
     """A single memory-game card.
 
-    Each card shows a graphic plus a Polish and Japanese word on its face,
-    and a plain back while hidden. Two cards with the same `pair_id` are
-    a match.
+    Each card shows a graphic plus a word's Japanese, romaji, English, and
+    Polish forms on its face, and a plain back while hidden. Two cards with
+    the same `pair_id` are a match.
     """
 
-    WIDTH: int = 100
-    HEIGHT: int = 140
-    BACK_COLOR: str = "steelblue"
-    FACE_COLOR: str = "white"
-    FLIP_DURATION: float = 0.25  # seconds, one half of the flip (hidden->edge or edge->shown)
-
-    FONT_NAME: Optional[str] = None  # default pygame font; swap for a path that has JP glyphs
-    FONT_SIZE: int = 16
+    # Fonts are expensive to load and identical across every card, so they're
+    # loaded once and shared at the class level rather than per instance.
+    _latin_font: ClassVar[Optional[pygame.font.Font]] = None
+    _japanese_font: ClassVar[Optional[pygame.font.Font]] = None
 
     def __init__(
         self,
         pair_id: int,
-        polish_text: str,
-        japanese_text: str,
+        word: WordTuple,
         image: Optional[pygame.Surface],
         pos: tuple[int, int],
     ) -> None:
         self.pair_id: int = pair_id
-        self.polish_text: str = polish_text
-        self.japanese_text: str = japanese_text
+        self.japanese, self.romaji, self.english, self.polish = word
         self.image: Optional[pygame.Surface] = image
 
-        self.rect: pygame.Rect = pygame.Rect(pos, (self.WIDTH, self.HEIGHT))
+        self.rect: pygame.Rect = pygame.Rect(pos, (CARD_WIDTH, CARD_HEIGHT))
 
         self.is_hidden: bool = True
         self.is_matched: bool = False
@@ -46,7 +55,31 @@ class Card:
         self._pending_hidden_state: Optional[bool] = None  # target is_hidden once anim completes
         self._on_flip_complete: Optional[OnFlipComplete] = None
 
-        self._font: pygame.font.Font = pygame.font.Font(self.FONT_NAME, self.FONT_SIZE)
+        self._ensure_fonts_loaded()
+
+    # ------------------------------------------------------------------
+    # fonts
+    # ------------------------------------------------------------------
+    @classmethod
+    def _ensure_fonts_loaded(cls) -> None:
+        """Load the shared fonts once, on first Card construction."""
+        if cls._latin_font is not None and cls._japanese_font is not None:
+            return
+
+        if not LATIN_FONT_PATH.exists():
+            raise FileNotFoundError(
+                f"Missing Latin font at {LATIN_FONT_PATH}. It covers Polish "
+                "diacritics and romaji macrons."
+            )
+        if not JAPANESE_FONT_PATH.exists():
+            raise FileNotFoundError(
+                f"Missing Japanese font at {JAPANESE_FONT_PATH}. Download a "
+                "Japanese-capable .ttf/.otf (e.g. Noto Sans JP) and place it "
+                "there."
+            )
+
+        cls._latin_font = pygame.font.Font(str(LATIN_FONT_PATH), LATIN_FONT_SIZE)
+        cls._japanese_font = pygame.font.Font(str(JAPANESE_FONT_PATH), JAPANESE_FONT_SIZE)
 
     # ------------------------------------------------------------------
     # public API
@@ -75,7 +108,7 @@ class Card:
             return
 
         self._anim_timer += dt
-        total_duration = self.FLIP_DURATION * 2
+        total_duration = CARD_FLIP_DURATION * 2
 
         if self._anim_timer >= total_duration:
             assert self._pending_hidden_state is not None
@@ -104,7 +137,7 @@ class Card:
     def _draw_animated(self, surface: pygame.Surface) -> None:
         """Squash the card horizontally to 0 width then back out, swapping
         which face is shown at the halfway point."""
-        half = self.FLIP_DURATION
+        half = CARD_FLIP_DURATION
         showing_hidden: bool
         if self._anim_timer < half:
             # shrinking: show current (pre-flip) side
@@ -119,29 +152,41 @@ class Card:
         scale_x = max(abs(progress), 0.01)
         content = self._render_back() if showing_hidden else self._render_face()
         scaled = pygame.transform.scale(
-            content, (max(1, int(self.WIDTH * scale_x)), self.HEIGHT)
+            content, (max(1, int(CARD_WIDTH * scale_x)), CARD_HEIGHT)
         )
         blit_rect = scaled.get_rect(center=self.rect.center)
         surface.blit(scaled, blit_rect)
 
     def _render_back(self) -> pygame.Surface:
-        surf = pygame.Surface((self.WIDTH, self.HEIGHT))
-        surf.fill(self.BACK_COLOR)
+        surf = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
+        surf.fill(CARD_BACK_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)
         return surf
 
     def _render_face(self) -> pygame.Surface:
-        surf = pygame.Surface((self.WIDTH, self.HEIGHT))
-        surf.fill(self.FACE_COLOR)
+        assert self._latin_font is not None and self._japanese_font is not None
+
+        surf = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
+        surf.fill(CARD_FACE_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)
 
         if self.image:
-            img_rect = self.image.get_rect(midtop=(self.WIDTH // 2, 6))
+            img_rect = self.image.get_rect(midtop=(CARD_WIDTH // 2, 6))
             surf.blit(self.image, img_rect)
 
-        pl_surf = self._font.render(self.polish_text, True, "black")
-        jp_surf = self._font.render(self.japanese_text, True, "black")
-        surf.blit(pl_surf, pl_surf.get_rect(centerx=self.WIDTH // 2, bottom=self.HEIGHT - 24))
-        surf.blit(jp_surf, jp_surf.get_rect(centerx=self.WIDTH // 2, bottom=self.HEIGHT - 6))
+        # Japanese uses the CJK font; romaji/English/Polish share the Latin
+        # font, which also covers Polish diacritics and romaji macrons.
+        lines = [
+            (self.japanese, self._japanese_font),
+            (self.romaji, self._latin_font),
+            (self.english, self._latin_font),
+            (self.polish, self._latin_font),
+        ]
+
+        line_surfaces = [font.render(text, True, "black") for text, font in lines]
+        bottom = CARD_HEIGHT - 6
+        for line_surf in reversed(line_surfaces):
+            surf.blit(line_surf, line_surf.get_rect(centerx=CARD_WIDTH // 2, bottom=bottom))
+            bottom -= line_surf.get_height() + 2
 
         return surf

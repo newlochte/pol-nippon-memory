@@ -2,23 +2,28 @@ import random
 
 import pygame
 
-from game.card import Card
+from game.card import Card, WordTuple
+from game.constants import (
+    BACKGROUND_COLOR,
+    BOARD_GAP,
+    BOARD_MARGIN_X,
+    BOARD_MARGIN_Y,
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    FPS,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    WINDOW_TITLE,
+)
 
 
 class Game:
     """Owns the main loop and top-level game state."""
 
-    SCREEN_WIDTH: int = 600
-    SCREEN_HEIGHT: int = 600
-    FPS: int = 60
-    BACKGROUND_COLOR: str = "white"
-
     def __init__(self, board_size: tuple[int, int]) -> None:
         pygame.init()
-        self.screen: pygame.Surface = pygame.display.set_mode(
-            (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
-        )
-        pygame.display.set_caption("Memory Game")
+        self.screen: pygame.Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+        pygame.display.set_caption(WINDOW_TITLE)
         self.clock: pygame.time.Clock = pygame.time.Clock()
         self.running: bool = False
 
@@ -44,22 +49,23 @@ class Game:
         # TODO: replace with real vocab data and images loaded in _load_assets
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
-        vocab: list[tuple[str, str]] = [(f"pl_{i}", f"jp_{i}") for i in range(pair_count)]
+        # (japanese, romaji, english, polish)
+        vocab: list[WordTuple] = [
+            (f"日本語{i}", f"romaji{i}", f"english{i}", f"polski{i}") for i in range(pair_count)
+        ]
 
-        pairs: list[tuple[int, str, str]] = []
-        for pair_id, (pl, jp) in enumerate(vocab):
-            pairs.append((pair_id, pl, jp))
-            pairs.append((pair_id, pl, jp))
+        pairs: list[tuple[int, WordTuple]] = []
+        for pair_id, word in enumerate(vocab):
+            pairs.append((pair_id, word))
+            pairs.append((pair_id, word))
         random.shuffle(pairs)
 
-        margin_x, margin_y = 20, 20
-        gap = 10
-        for index, (pair_id, pl, jp) in enumerate(pairs):
+        for index, (pair_id, word) in enumerate(pairs):
             col = index % cols
             row = index // cols
-            x = margin_x + col * (Card.WIDTH + gap)
-            y = margin_y + row * (Card.HEIGHT + gap)
-            self.cards.append(Card(pair_id, pl, jp, image=None, pos=(x, y)))
+            x = BOARD_MARGIN_X + col * (CARD_WIDTH + BOARD_GAP)
+            y = BOARD_MARGIN_Y + row * (CARD_HEIGHT + BOARD_GAP)
+            self.cards.append(Card(pair_id, word, image=None, pos=(x, y)))
 
     # ------------------------------------------------------------------
     # main loop
@@ -67,7 +73,7 @@ class Game:
     def run(self) -> None:
         self.running = True
         while self.running:
-            dt = self.clock.tick(self.FPS) / 1000  # seconds since last frame
+            dt = self.clock.tick(FPS) / 1000  # seconds since last frame
             self._handle_events()
             self._update(dt)
             self._draw()
@@ -120,7 +126,7 @@ class Game:
             self.running = False  # TODO: show a win screen instead
 
     def _draw(self) -> None:
-        self.screen.fill(self.BACKGROUND_COLOR)
+        self.screen.fill(BACKGROUND_COLOR)
 
         for card in self.cards:
             card.draw(self.screen)
