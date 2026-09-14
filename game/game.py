@@ -1,26 +1,33 @@
+import random
+
 import pygame
+
+from game.card import Card
 
 
 class Game:
     """Owns the main loop and top-level game state."""
 
-    SCREEN_WIDTH = 600
-    SCREEN_HEIGHT = 600
-    FPS = 60
-    BACKGROUND_COLOR = "white"
+    SCREEN_WIDTH: int = 600
+    SCREEN_HEIGHT: int = 600
+    FPS: int = 60
+    BACKGROUND_COLOR: str = "white"
 
-    def __init__(self, board_size: tuple[int, int]):
+    def __init__(self, board_size: tuple[int, int]) -> None:
         pygame.init()
-        self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
+        self.screen: pygame.Surface = pygame.display.set_mode(
+            (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)
+        )
         pygame.display.set_caption("Memory Game")
-        self.clock = pygame.time.Clock()
-        self.running = False
+        self.clock: pygame.time.Clock = pygame.time.Clock()
+        self.running: bool = False
 
         # game state
-        self.cards = []          # will hold Card instances
-        self.selected_cards = [] # currently flipped, unmatched cards
-        self.matched_pairs = 0
-        self.score = 0
+        self.board_size: tuple[int, int] = board_size
+        self.cards: list[Card] = []
+        self.selected_cards: list[Card] = []  # currently flipped, unmatched cards
+        self.matched_pairs: int = 0
+        self.score: int = 0
 
         self._load_assets()
         self._setup_board()
@@ -28,44 +35,94 @@ class Game:
     # ------------------------------------------------------------------
     # setup
     # ------------------------------------------------------------------
-    def _load_assets(self):
+    def _load_assets(self) -> None:
         """Load images/sounds once up front."""
         pass
 
-    def _setup_board(self):
+    def _setup_board(self) -> None:
         """Create and shuffle the cards, position them on a grid."""
-        pass
+        # TODO: replace with real vocab data and images loaded in _load_assets
+        cols, rows = self.board_size
+        pair_count = (cols * rows) // 2
+        vocab: list[tuple[str, str]] = [(f"pl_{i}", f"jp_{i}") for i in range(pair_count)]
+
+        pairs: list[tuple[int, str, str]] = []
+        for pair_id, (pl, jp) in enumerate(vocab):
+            pairs.append((pair_id, pl, jp))
+            pairs.append((pair_id, pl, jp))
+        random.shuffle(pairs)
+
+        margin_x, margin_y = 20, 20
+        gap = 10
+        for index, (pair_id, pl, jp) in enumerate(pairs):
+            col = index % cols
+            row = index // cols
+            x = margin_x + col * (Card.WIDTH + gap)
+            y = margin_y + row * (Card.HEIGHT + gap)
+            self.cards.append(Card(pair_id, pl, jp, image=None, pos=(x, y)))
 
     # ------------------------------------------------------------------
     # main loop
     # ------------------------------------------------------------------
-    def run(self):
+    def run(self) -> None:
         self.running = True
         while self.running:
+            dt = self.clock.tick(self.FPS) / 1000  # seconds since last frame
             self._handle_events()
-            self._update()
+            self._update(dt)
             self._draw()
-            self.clock.tick(self.FPS)
         pygame.quit()
 
-    def _handle_events(self):
+    def _handle_events(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 self._handle_click(event.pos)
 
-    def _handle_click(self, pos):
+    def _handle_click(self, pos: tuple[int, int]) -> None:
         """Translate a click position into a card flip, if any."""
-        pass
+        if len(self.selected_cards) >= 2:
+            return  # waiting for the current pair to resolve/flip back
 
-    def _update(self):
-        """Check for matches, handle flip-back timing, win condition, etc."""
-        pass
+        for card in self.cards:
+            if card.contains(pos) and card.is_hidden and not card.is_matched:
+                card.flip(on_complete=self._on_card_flipped)
+                self.selected_cards.append(card)
+                break
 
-    def _draw(self):
+    def _on_card_flipped(self, card: Card) -> None:
+        """Called by a Card once its flip animation finishes."""
+        if len(self.selected_cards) < 2:
+            return
+        if card is not self.selected_cards[-1]:
+            return  # only react once the second card's animation has landed
+
+        first, second = self.selected_cards
+        if first.pair_id == second.pair_id:
+            first.is_matched = True
+            second.is_matched = True
+            self.matched_pairs += 1
+            self.score += 1
+            self.selected_cards = []
+        else:
+            first.flip(on_complete=lambda c: None)
+            second.flip(on_complete=lambda c: None)
+            self.selected_cards = []
+
+    def _update(self, dt: float) -> None:
+        """Advance card animations, and check the win condition."""
+        for card in self.cards:
+            card.update(dt)
+
+        total_pairs = (self.board_size[0] * self.board_size[1]) // 2
+        if self.matched_pairs == total_pairs:
+            self.running = False  # TODO: show a win screen instead
+
+    def _draw(self) -> None:
         self.screen.fill(self.BACKGROUND_COLOR)
 
-        
-        
+        for card in self.cards:
+            card.draw(self.screen)
+
         pygame.display.flip()
