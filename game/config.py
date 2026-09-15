@@ -33,8 +33,13 @@ CARD_BACK_COLOR: str = "steelblue"
 CARD_FACE_COLOR: str = "white"
 CARD_FLIP_DURATION: float = 0.25  # seconds, one half of the flip (hidden->edge or edge->shown)
 
-LATIN_FONT_SIZE: int = 14
-JAPANESE_FONT_SIZE: int = 16
+# Font sizes are derived from card height (see Card._font_size_for) rather
+# than fixed, so they stay proportional once card size becomes dynamic.
+# At the current CARD_HEIGHT these reproduce the old fixed sizes (20/24).
+LATIN_FONT_HEIGHT_RATIO: float = 0.20
+JAPANESE_FONT_HEIGHT_RATIO: float = 0.24
+MIN_FONT_SIZE: int = 8
+MAX_FONT_SIZE: int = 48
 
 # ----------------------------------------------------------------------
 # board layout

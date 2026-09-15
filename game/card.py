@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Callable, ClassVar, Optional
 
 import pygame
@@ -10,10 +11,12 @@ from game.config import (
     CARD_FLIP_DURATION,
     CARD_HEIGHT,
     CARD_WIDTH,
+    JAPANESE_FONT_HEIGHT_RATIO,
     JAPANESE_FONT_PATH,
-    JAPANESE_FONT_SIZE,
+    LATIN_FONT_HEIGHT_RATIO,
     LATIN_FONT_PATH,
-    LATIN_FONT_SIZE,
+    MAX_FONT_SIZE,
+    MIN_FONT_SIZE,
 )
 
 OnFlipComplete = Callable[["Card"], None]
@@ -26,10 +29,10 @@ class Card:
     the same `pair_id` are a match.
     """
 
-    # Fonts are expensive to load and identical across every card, so they're
-    # loaded once and shared at the class level rather than per instance.
-    _latin_font: ClassVar[Optional[pygame.font.Font]] = None
-    _japanese_font: ClassVar[Optional[pygame.font.Font]] = None
+    # Fonts are expensive to load, so each (path, size) combination is loaded
+    # once and shared across all cards rather than per instance. Card size
+    # (and therefore font size) can vary, so the cache is keyed by size.
+    _font_cache: ClassVar[dict[tuple[Path, int], pygame.font.Font]] = {}
 
     def __init__(
         self,
@@ -37,12 +40,14 @@ class Card:
         word: WordTuple,
         image: Optional[pygame.Surface],
         pos: tuple[int, int],
+        width: int = CARD_WIDTH,
+        height: int = CARD_HEIGHT,
     ) -> None:
         self.pair_id: int = pair_id
         self.japanese, self.romaji, self.english, self.polish = word
         self.image: Optional[pygame.Surface] = image
 
-        self.rect: pygame.Rect = pygame.Rect(pos, (CARD_WIDTH, CARD_HEIGHT))
+        self.rect: pygame.Rect = pygame.Rect(pos, (width, height))
 
         self.is_hidden: bool = True
         self.is_matched: bool = False
@@ -53,31 +58,30 @@ class Card:
         self._pending_hidden_state: Optional[bool] = None  # target is_hidden once anim completes
         self._on_flip_complete: Optional[OnFlipComplete] = None
 
-        self._ensure_fonts_loaded()
+        self._latin_font = self._get_font(LATIN_FONT_PATH, height, LATIN_FONT_HEIGHT_RATIO)
+        self._japanese_font = self._get_font(JAPANESE_FONT_PATH, height, JAPANESE_FONT_HEIGHT_RATIO)
 
     # ------------------------------------------------------------------
     # fonts
     # ------------------------------------------------------------------
     @classmethod
-    def _ensure_fonts_loaded(cls) -> None:
-        """Load the shared fonts once, on first Card construction."""
-        if cls._latin_font is not None and cls._japanese_font is not None:
-            return
+    def _font_size(cls, height: int, ratio: float) -> int:
+        """Derive a font point size from card height, clamped to a sane range."""
+        return max(MIN_FONT_SIZE, min(MAX_FONT_SIZE, round(height * ratio)))
 
-        if not LATIN_FONT_PATH.exists():
-            raise FileNotFoundError(
-                f"Missing Latin font at {LATIN_FONT_PATH}. It covers Polish "
-                "diacritics and romaji macrons."
-            )
-        if not JAPANESE_FONT_PATH.exists():
-            raise FileNotFoundError(
-                f"Missing Japanese font at {JAPANESE_FONT_PATH}. Download a "
-                "Japanese-capable .ttf/.otf (e.g. Noto Sans JP) and place it "
-                "there."
-            )
+    @classmethod
+    def _get_font(cls, path: Path, height: int, ratio: float) -> pygame.font.Font:
+        """Return the shared font for (path, size), loading it on first use."""
+        if not path.exists():
+            raise FileNotFoundError(f"Missing font at {path}.")
 
-        cls._latin_font = pygame.font.Font(str(LATIN_FONT_PATH), LATIN_FONT_SIZE)
-        cls._japanese_font = pygame.font.Font(str(JAPANESE_FONT_PATH), JAPANESE_FONT_SIZE)
+        size = cls._font_size(height, ratio)
+        key = (path, size)
+        font = cls._font_cache.get(key)
+        if font is None:
+            font = pygame.font.Font(str(path), size)
+            cls._font_cache[key] = font
+        return font
 
     # ------------------------------------------------------------------
     # public API
@@ -147,29 +151,30 @@ class Card:
             assert self._pending_hidden_state is not None
             showing_hidden = self._pending_hidden_state
 
+        width, height = self.rect.size
         scale_x = max(abs(progress), 0.01)
         content = self._render_back() if showing_hidden else self._render_face()
         scaled = pygame.transform.scale(
-            content, (max(1, int(CARD_WIDTH * scale_x)), CARD_HEIGHT)
+            content, (max(1, int(width * scale_x)), height)
         )
         blit_rect = scaled.get_rect(center=self.rect.center)
         surface.blit(scaled, blit_rect)
 
     def _render_back(self) -> pygame.Surface:
-        surf = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
+        surf = pygame.Surface(self.rect.size)
         surf.fill(CARD_BACK_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)
         return surf
 
     def _render_face(self) -> pygame.Surface:
-        assert self._latin_font is not None and self._japanese_font is not None
+        width, height = self.rect.size
 
-        surf = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
+        surf = pygame.Surface((width, height))
         surf.fill(CARD_FACE_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)
 
         if self.image:
-            img_rect = self.image.get_rect(midtop=(CARD_WIDTH // 2, 6))
+            img_rect = self.image.get_rect(midtop=(width // 2, 6))
             surf.blit(self.image, img_rect)
 
         # Japanese uses the CJK font; romaji/English/Polish share the Latin
@@ -181,9 +186,9 @@ class Card:
         ]
 
         line_surfaces = [font.render(text, True, "black") for text, font in lines]
-        bottom = CARD_HEIGHT - 6
+        bottom = height - 6
         for line_surf in reversed(line_surfaces):
-            surf.blit(line_surf, line_surf.get_rect(centerx=CARD_WIDTH // 2, bottom=bottom))
+            surf.blit(line_surf, line_surf.get_rect(centerx=width // 2, bottom=bottom))
             bottom -= line_surf.get_height() + 2
 
         return surf
