@@ -2,6 +2,8 @@ import random
 from typing import Optional
 
 import math
+from typing import Optional
+
 import pygame
 
 from game.words import WordTuple, load_words
