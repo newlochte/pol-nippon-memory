@@ -2,7 +2,7 @@ import random
 
 import pygame
 
-from game.words import WordTuple
+from game.words import WordTuple, load_words
 from game.card import Card
 from game.config import (
     BACKGROUND_COLOR,
@@ -51,9 +51,7 @@ class Game:
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
         # (japanese, romaji, english, polish)
-        vocab: list[WordTuple] = [
-            (f"日本語{i}", f"romaji{i}", f"english{i}", f"polski{i}") for i in range(pair_count)
-        ]
+        vocab: list[WordTuple] = load_words()
 
         pairs: list[tuple[int, WordTuple]] = []
         for pair_id, word in enumerate(vocab):

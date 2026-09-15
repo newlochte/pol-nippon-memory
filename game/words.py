@@ -17,14 +17,16 @@
 
 from pathlib import Path
 
+from game.config import DATA_DIR
+
 import yaml
 
 # (japanese, romaji, english, polish)
 WordTuple = tuple[str, str, str, str]
 
 def load_words():
-    path = Path(__file__).parent / "data/word_list.yaml"
-    with open(path, encoding="utf-8") as file:
+    word_list = DATA_DIR / "word_list.yaml"
+    with open(word_list, encoding="utf-8") as file:
         return yaml.safe_load(file)
 
 
