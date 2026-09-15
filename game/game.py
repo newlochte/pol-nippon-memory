@@ -47,7 +47,6 @@ class Game:
 
     def _setup_board(self) -> None:
         """Create and shuffle the cards, position them on a grid."""
-        # TODO: replace with real vocab data and images loaded in _load_assets
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
         # (japanese, romaji, english, polish)

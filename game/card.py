@@ -177,7 +177,6 @@ class Card:
         lines = [
             (self.japanese, self._japanese_font),
             (self.romaji, self._latin_font),
-            (self.english, self._latin_font),
             (self.polish, self._latin_font),
         ]
 
