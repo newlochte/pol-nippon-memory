@@ -63,8 +63,8 @@ class Game:
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
         # (japanese, romaji, english, polish)
-        vocab: list[WordTuple] = load_words()[:pair_count]
-
+        vocab: list[WordTuple] = random.sample(load_words(), k=pair_count)
+        
         pairs: list[tuple[int, WordTuple]] = []
         for pair_id, word in enumerate(vocab):
             pairs.append((pair_id, word))
