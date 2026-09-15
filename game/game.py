@@ -2,8 +2,9 @@ import random
 
 import pygame
 
-from game.card import Card, WordTuple
-from game.constants import (
+from game.words import WordTuple
+from game.card import Card
+from game.config import (
     BACKGROUND_COLOR,
     BOARD_GAP,
     BOARD_MARGIN_X,

@@ -17,7 +17,7 @@ JAPANESE_FONT_PATH = FONTS_DIR / "NotoSansJP[wght].ttf"
 # ----------------------------------------------------------------------
 # window / loop
 # ----------------------------------------------------------------------
-SCREEN_WIDTH: int = 600
+SCREEN_WIDTH: int = 800
 SCREEN_HEIGHT: int = 600
 FPS: int = 60
 BACKGROUND_COLOR: str = "white"
@@ -26,8 +26,8 @@ WINDOW_TITLE: str = "Memory Game"
 # ----------------------------------------------------------------------
 # card appearance
 # ----------------------------------------------------------------------
-CARD_WIDTH: int = 100
-CARD_HEIGHT: int = 140
+CARD_WIDTH: int = 140
+CARD_HEIGHT: int = 100
 CARD_BACK_COLOR: str = "steelblue"
 CARD_FACE_COLOR: str = "white"
 CARD_FLIP_DURATION: float = 0.25  # seconds, one half of the flip (hidden->edge or edge->shown)

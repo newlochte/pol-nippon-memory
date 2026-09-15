@@ -2,7 +2,9 @@ from typing import Callable, ClassVar, Optional
 
 import pygame
 
-from game.constants import (
+from game.words import WordTuple
+
+from game.config import (
     CARD_BACK_COLOR,
     CARD_FACE_COLOR,
     CARD_FLIP_DURATION,
@@ -15,10 +17,6 @@ from game.constants import (
 )
 
 OnFlipComplete = Callable[["Card"], None]
-
-# (japanese, romaji, english, polish)
-WordTuple = tuple[str, str, str, str]
-
 
 class Card:
     """A single memory-game card.
