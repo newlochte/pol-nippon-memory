@@ -110,7 +110,7 @@ class Card:
             return
 
         self._anim_timer += dt
-        total_duration = CARD_FLIP_DURATION * 2
+        total_duration = CARD_FLIP_DURATION
 
         if self._anim_timer >= total_duration:
             assert self._pending_hidden_state is not None

@@ -31,7 +31,8 @@ CARD_WIDTH: int = 140
 CARD_HEIGHT: int = 100
 CARD_BACK_COLOR: str = "steelblue"
 CARD_FACE_COLOR: str = "white"
-CARD_FLIP_DURATION: float = 0.25  # seconds, one half of the flip (hidden->edge or edge->shown)
+CARD_FLIP_DURATION: float = 0.25  # seconds, for the full flip animation
+MISMATCH_FLIP_BACK_DELAY: float = 0.3  # seconds to pause on a non-matching pair before flipping back
 
 # Font sizes are derived from card height (see Card._font_size_for) rather
 # than fixed, so they stay proportional once card size becomes dynamic.
