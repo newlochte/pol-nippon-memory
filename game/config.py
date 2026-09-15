@@ -6,6 +6,7 @@ from pathlib import Path
 ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 FONTS_DIR = ASSETS_DIR / "fonts"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+CARD_BACK_IMAGE_PATH = ASSETS_DIR / "images" / "back2.png"
 
 # Latin font: covers Polish diacritics (ą ć ę ł ń ó ś ź ż) and romaji
 # macrons (ā ī ū ē ō) — both are Latin Extended-A/B, so one font handles both.

@@ -6,6 +6,7 @@ from game.words import WordTuple
 
 from game.config import (
     CARD_BACK_COLOR,
+    CARD_BACK_IMAGE_PATH,
     CARD_FACE_COLOR,
     CARD_FLIP_DURATION,
     CARD_HEIGHT,
@@ -30,6 +31,7 @@ class Card:
     # loaded once and shared at the class level rather than per instance.
     _latin_font: ClassVar[Optional[pygame.font.Font]] = None
     _japanese_font: ClassVar[Optional[pygame.font.Font]] = None
+    _back_image: ClassVar[Optional[pygame.Surface]] = None
 
     def __init__(
         self,
@@ -62,7 +64,8 @@ class Card:
     def _ensure_fonts_loaded(cls) -> None:
         """Load the shared fonts once, on first Card construction."""
         if cls._latin_font is not None and cls._japanese_font is not None:
-            return
+            if cls._back_image is not None:
+                return
 
         if not LATIN_FONT_PATH.exists():
             raise FileNotFoundError(
@@ -78,6 +81,12 @@ class Card:
 
         cls._latin_font = pygame.font.Font(str(LATIN_FONT_PATH), LATIN_FONT_SIZE)
         cls._japanese_font = pygame.font.Font(str(JAPANESE_FONT_PATH), JAPANESE_FONT_SIZE)
+
+        if CARD_BACK_IMAGE_PATH.exists():
+            back_image = pygame.image.load(str(CARD_BACK_IMAGE_PATH)).convert()
+            cls._back_image = pygame.transform.smoothscale(
+                back_image, (CARD_WIDTH, CARD_HEIGHT)
+            )
 
     # ------------------------------------------------------------------
     # public API
@@ -156,6 +165,9 @@ class Card:
         surface.blit(scaled, blit_rect)
 
     def _render_back(self) -> pygame.Surface:
+        if self._back_image is not None:
+            return self._back_image
+
         surf = pygame.Surface((CARD_WIDTH, CARD_HEIGHT))
         surf.fill(CARD_BACK_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)
