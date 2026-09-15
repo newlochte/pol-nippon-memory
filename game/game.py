@@ -109,7 +109,12 @@ class Game:
             return  # waiting for the current pair to resolve/flip back
 
         for card in self.cards:
-            if card.contains(pos) and card.is_hidden and not card.is_matched:
+            if (
+                card.contains(pos)
+                and card.is_hidden
+                and not card.is_matched
+                and card not in self.selected_cards
+            ):
                 card.flip(on_complete=self._on_card_flipped)
                 self.selected_cards.append(card)
                 break
