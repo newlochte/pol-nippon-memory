@@ -1,4 +1,9 @@
 import random
+from typing import Optional
+
+import math
+from typing import Optional
+
 import math
 import pygame
 
@@ -12,6 +17,7 @@ from game.config import (
     CARD_HEIGHT,
     CARD_WIDTH,
     FPS,
+    MISMATCH_FLIP_BACK_DELAY,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     WINDOW_TITLE,
@@ -34,6 +40,7 @@ class Game:
         self.selected_cards: list[Card] = []  # currently flipped, unmatched cards
         self.matched_pairs: int = 0
         self.score: int = 0
+        self._mismatch_timer: Optional[float] = None  # counts down while a non-matching pair is shown
 
         self._load_assets()
         self._setup_board()
@@ -59,7 +66,6 @@ class Game:
 
     def _setup_board(self) -> None:
         """Create and shuffle the cards, position them on a grid."""
-        # TODO: replace with real vocab data and images loaded in _load_assets
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
         # (japanese, romaji, english, polish)
@@ -123,14 +129,21 @@ class Game:
             self.score += 1
             self.selected_cards = []
         else:
-            first.flip(on_complete=lambda c: None)
-            second.flip(on_complete=lambda c: None)
-            self.selected_cards = []
+            self._mismatch_timer = MISMATCH_FLIP_BACK_DELAY
 
     def _update(self, dt: float) -> None:
-        """Advance card animations, and check the win condition."""
+        """Advance card animations, the mismatch pause, and check the win condition."""
         for card in self.cards:
             card.update(dt)
+
+        if self._mismatch_timer is not None:
+            self._mismatch_timer -= dt
+            if self._mismatch_timer <= 0:
+                self._mismatch_timer = None
+                first, second = self.selected_cards
+                first.flip(on_complete=lambda c: None)
+                second.flip(on_complete=lambda c: None)
+                self.selected_cards = []
 
         total_pairs = (self.board_size[0] * self.board_size[1]) // 2
         if self.matched_pairs == total_pairs:
