@@ -7,6 +7,7 @@ from game.words import WordTuple
 
 from game.config import (
     CARD_BACK_COLOR,
+    CARD_BACK_IMAGE_PATH,
     CARD_FACE_COLOR,
     CARD_FLIP_DURATION,
     CARD_HEIGHT,
@@ -28,11 +29,12 @@ class Card:
     Polish forms on its face, and a plain back while hidden. Two cards with
     the same `pair_id` are a match.
     """
-
+    
     # Fonts are expensive to load, so each (path, size) combination is loaded
     # once and shared across all cards rather than per instance. Card size
     # (and therefore font size) can vary, so the cache is keyed by size.
     _font_cache: ClassVar[dict[tuple[Path, int], pygame.font.Font]] = {}
+    _back_image: ClassVar[Optional[pygame.Surface]] = None
 
     def __init__(
         self,
@@ -82,6 +84,16 @@ class Card:
             font = pygame.font.Font(str(path), size)
             cls._font_cache[key] = font
         return font
+
+    @classmethod
+    def _get_back_image(cls) -> Optional[pygame.Surface]:
+        """Return the shared card-back image, loading it on first use."""
+        if cls._back_image is None and CARD_BACK_IMAGE_PATH.exists():
+            back_image = pygame.image.load(str(CARD_BACK_IMAGE_PATH)).convert()
+            cls._back_image = pygame.transform.smoothscale(
+                back_image, (CARD_WIDTH, CARD_HEIGHT)
+            )
+        return cls._back_image
 
     # ------------------------------------------------------------------
     # public API
@@ -161,6 +173,10 @@ class Card:
         surface.blit(scaled, blit_rect)
 
     def _render_back(self) -> pygame.Surface:
+        back_image = self._get_back_image()
+        if back_image is not None:
+            return back_image
+
         surf = pygame.Surface(self.rect.size)
         surf.fill(CARD_BACK_COLOR)
         pygame.draw.rect(surf, "black", surf.get_rect(), width=2)

@@ -13,7 +13,10 @@ else:
 
 ASSETS_DIR = BASE_DIR / "assets"
 FONTS_DIR = ASSETS_DIR / "fonts"
+
+CARD_BACK_IMAGE_PATH = ASSETS_DIR / "images" / "back2.png"
 DATA_DIR = BASE_DIR / "data"
+
 
 # Latin font: covers Polish diacritics (ą ć ę ł ń ó ś ź ż) and romaji
 # macrons (ā ī ū ē ō) — both are Latin Extended-A/B, so one font handles both.
