@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Linux binary via Docker
+        run: docker compose up --build
+
+      - name: Rename artifact
+        run: mv dist/pol-nippon-memory dist/pol-nippon-memory-linux
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-build
+          path: dist/pol-nippon-memory-linux
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build Windows binary
+        run: pyinstaller pyinstaller.spec --noconfirm --clean
+
+      - name: Rename artifact
+        run: mv dist\pol-nippon-memory.exe dist\pol-nippon-memory-windows.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-build
+          path: dist/pol-nippon-memory-windows.exe
+
+  release:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/linux-build/pol-nippon-memory-linux
+            release/windows-build/pol-nippon-memory-windows.exe
