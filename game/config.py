@@ -1,11 +1,19 @@
+import sys
 from pathlib import Path
 
 # ----------------------------------------------------------------------
 # paths
 # ----------------------------------------------------------------------
-ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+# When frozen by PyInstaller, bundled data lives under sys._MEIPASS instead
+# of next to this file.
+if getattr(sys, "frozen", False):
+    BASE_DIR = Path(sys._MEIPASS)  # type: ignore[attr-defined]
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+ASSETS_DIR = BASE_DIR / "assets"
 FONTS_DIR = ASSETS_DIR / "fonts"
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = BASE_DIR / "data"
 
 # Latin font: covers Polish diacritics (ą ć ę ł ń ó ś ź ż) and romaji
 # macrons (ā ī ū ē ō) — both are Latin Extended-A/B, so one font handles both.
