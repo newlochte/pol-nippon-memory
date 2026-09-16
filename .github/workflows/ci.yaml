@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Checks only read the repo — no writes, no releases.
+permissions:
+  contents: read
+
+# A new push to the same branch supersedes the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      # ruff is pinned: an unpinned upgrade can widen the default rule set
+      # and turn CI red without a single line of our code changing.
+      - run: pip install -r requirements.txt ruff==0.16.7 pytest==9.1.1
+      - run: ruff check .
+      - env:
+          SDL_VIDEODRIVER: dummy   # no display on the runner
+        run: pytest
