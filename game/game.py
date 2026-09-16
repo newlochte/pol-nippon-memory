@@ -1,5 +1,10 @@
 import random
+from typing import Optional
 
+import math
+from typing import Optional
+
+import math
 import pygame
 
 from game.words import WordTuple, load_words
@@ -12,6 +17,7 @@ from game.config import (
     CARD_HEIGHT,
     CARD_WIDTH,
     FPS,
+    MISMATCH_FLIP_BACK_DELAY,
     SCREEN_HEIGHT,
     SCREEN_WIDTH,
     WINDOW_TITLE,
@@ -21,7 +27,7 @@ from game.config import (
 class Game:
     """Owns the main loop and top-level game state."""
 
-    def __init__(self, board_size: tuple[int, int]) -> None:
+    def __init__(self, pair_count: int) -> None:
         pygame.init()
         self.screen: pygame.Surface = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         pygame.display.set_caption(WINDOW_TITLE)
@@ -29,11 +35,12 @@ class Game:
         self.running: bool = False
 
         # game state
-        self.board_size: tuple[int, int] = board_size
+        self.board_size = self._pair2colrow(pair_count)
         self.cards: list[Card] = []
         self.selected_cards: list[Card] = []  # currently flipped, unmatched cards
         self.matched_pairs: int = 0
         self.score: int = 0
+        self._mismatch_timer: Optional[float] = None  # counts down while a non-matching pair is shown
 
         self._load_assets()
         self._setup_board()
@@ -41,18 +48,29 @@ class Game:
     # ------------------------------------------------------------------
     # setup
     # ------------------------------------------------------------------
+    @staticmethod
+    def _pair2colrow(pair_count: int) -> tuple[int, int]:
+        card_count = pair_count * 2
+        rows = math.isqrt(card_count)
+
+        while card_count % rows != 0:
+            rows -= 1
+
+        cols = card_count // rows
+        return cols, rows
+    
+
     def _load_assets(self) -> None:
         """Load images/sounds once up front."""
         pass
 
     def _setup_board(self) -> None:
         """Create and shuffle the cards, position them on a grid."""
-        # TODO: replace with real vocab data and images loaded in _load_assets
         cols, rows = self.board_size
         pair_count = (cols * rows) // 2
         # (japanese, romaji, english, polish)
-        vocab: list[WordTuple] = load_words()
-
+        vocab: list[WordTuple] = random.sample(load_words(), k=pair_count)
+        
         pairs: list[tuple[int, WordTuple]] = []
         for pair_id, word in enumerate(vocab):
             pairs.append((pair_id, word))
@@ -91,7 +109,12 @@ class Game:
             return  # waiting for the current pair to resolve/flip back
 
         for card in self.cards:
-            if card.contains(pos) and card.is_hidden and not card.is_matched:
+            if (
+                card.contains(pos)
+                and card.is_hidden
+                and not card.is_matched
+                and card not in self.selected_cards
+            ):
                 card.flip(on_complete=self._on_card_flipped)
                 self.selected_cards.append(card)
                 break
@@ -111,14 +134,21 @@ class Game:
             self.score += 1
             self.selected_cards = []
         else:
-            first.flip(on_complete=lambda c: None)
-            second.flip(on_complete=lambda c: None)
-            self.selected_cards = []
+            self._mismatch_timer = MISMATCH_FLIP_BACK_DELAY
 
     def _update(self, dt: float) -> None:
-        """Advance card animations, and check the win condition."""
+        """Advance card animations, the mismatch pause, and check the win condition."""
         for card in self.cards:
             card.update(dt)
+
+        if self._mismatch_timer is not None:
+            self._mismatch_timer -= dt
+            if self._mismatch_timer <= 0:
+                self._mismatch_timer = None
+                first, second = self.selected_cards
+                first.flip(on_complete=lambda c: None)
+                second.flip(on_complete=lambda c: None)
+                self.selected_cards = []
 
         total_pairs = (self.board_size[0] * self.board_size[1]) // 2
         if self.matched_pairs == total_pairs:
