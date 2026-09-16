@@ -85,11 +85,15 @@ class Card:
             cls._font_cache[key] = font
         return font
 
-        if CARD_BACK_IMAGE_PATH.exists():
+    @classmethod
+    def _get_back_image(cls) -> Optional[pygame.Surface]:
+        """Return the shared card-back image, loading it on first use."""
+        if cls._back_image is None and CARD_BACK_IMAGE_PATH.exists():
             back_image = pygame.image.load(str(CARD_BACK_IMAGE_PATH)).convert()
             cls._back_image = pygame.transform.smoothscale(
                 back_image, (CARD_WIDTH, CARD_HEIGHT)
             )
+        return cls._back_image
 
     # ------------------------------------------------------------------
     # public API
@@ -169,8 +173,9 @@ class Card:
         surface.blit(scaled, blit_rect)
 
     def _render_back(self) -> pygame.Surface:
-        if self._back_image is not None:
-            return self._back_image
+        back_image = self._get_back_image()
+        if back_image is not None:
+            return back_image
 
         surf = pygame.Surface(self.rect.size)
         surf.fill(CARD_BACK_COLOR)
